@@ -1,0 +1,21 @@
+# Workload Cluster Template
+# Replace all <PLACEHOLDER> values with your environment values
+# Generate the actual manifest with:
+# clusterctl generate cluster kaas-workload \
+#   --infrastructure openstack \
+#   --kubernetes-version v1.29.0 \
+#   --control-plane-machine-count 1 \
+#   --worker-machine-count 2 \
+#   > manifests/cluster.yaml
+
+# Required environment variables:
+# export OPENSTACK_CLOUD=openstack
+# export OPENSTACK_CLOUD_YAML_B64=$(base64 -w0 ~/.config/openstack/clouds.yaml)
+# export OPENSTACK_CLOUD_CACERT_B64=""
+# export OPENSTACK_IMAGE_NAME=<your-ubuntu-image>
+# export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR=<flavor>
+# export OPENSTACK_NODE_MACHINE_FLAVOR=<flavor>
+# export OPENSTACK_EXTERNAL_NETWORK_ID=<external-network-id>
+# export OPENSTACK_DNS_NAMESERVERS=8.8.8.8
+# export OPENSTACK_FAILURE_DOMAIN=nova
+# export OPENSTACK_SSH_KEY_NAME=<your-key-pair-name>

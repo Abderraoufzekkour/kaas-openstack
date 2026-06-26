@@ -2,3 +2,4 @@ clouds.yaml
 *.pem
 *.env
 secrets/
+manifests/cluster.yaml
