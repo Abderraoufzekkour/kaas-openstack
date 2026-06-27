@@ -25,6 +25,14 @@
 ## Result — Workload Cluster
 
 A fully working 3-node Kubernetes cluster provisioned automatically by applying one YAML file:
+NAME                                STATUS   ROLES           VERSION
+
+kaas-workload-control-plane-vlkgk   Ready    control-plane   v1.32.12
+
+kaas-workload-md-0-9j6hc-9lkr2      Ready    worker          v1.32.12
+
+kaas-workload-md-0-9j6hc-lzpnz      Ready    worker          v1.32.12
+
 ## Screenshots
 
 ![Tools installed](screenshots/02-all-tools-installed.png)
