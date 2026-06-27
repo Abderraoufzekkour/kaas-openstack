@@ -48,3 +48,9 @@ See [docs/deployment.md](docs/deployment.md) for the full step-by-step guide.
 **Zekkour Abderraouf** — Final year Networks, Systems & Telecommunications — ENSTICP Algiers
 - GitHub: [@Abderraoufzekkour](https://github.com/Abderraoufzekkour)
 - LinkedIn: [zekkour-abderraouf](https://www.linkedin.com/in/zekkour-abderraouf)
+
+## Monitoring
+
+Prometheus + Grafana deployed via Helm on the workload cluster.
+
+![Grafana Dashboard](screenshots/13-grafana-dashboard.png)
