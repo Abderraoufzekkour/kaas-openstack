@@ -2,41 +2,38 @@
 
 ## Architecture
 
-- Management cluster: kubeadm on a dedicated VM (kaas-mgmt)
-- Workload clusters: provisioned by Cluster API + CAPO on OpenStack
-- All VMs on the same network for internal communication
+- Management cluster: single-node Kubernetes cluster bootstrapped with kubeadm
+- Workload clusters: provisioned automatically by Cluster API + CAPO on OpenStack
+- All components deployed on OpenStack infrastructure
 
 ## Prerequisites
 
-- OpenStack project with API access
-- Ubuntu 22.04 bastion VM with floating IP
-- Ubuntu 22.04 management VM (kaas-mgmt) with floating IP
+- OpenStack project with API access and clouds.yaml credentials
+- Ubuntu 22.04 management VM (kaas-mgmt)
+- Ubuntu 22.04 bastion VM for administration
 - SSH key pair imported in OpenStack
+- Tools: kubeadm, kubectl, kubelet, containerd, clusterctl, helm
 
 ## Step 1 - Bootstrap Management Cluster
 
-Install dependencies on kaas-mgmt:
-
 ```bash
-# Install kubeadm, kubelet, kubectl
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update && sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
-
-# Install containerd
+# Install container runtime
 sudo apt install -y containerd
 containerd config default | sudo tee /etc/containerd/config.toml
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 sudo systemctl restart containerd
 
-# Bootstrap cluster
-sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --kubernetes-version=v1.32.13 --apiserver-advertise-address=<MGMT_PRIVATE_IP>
+# Install Kubernetes components
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo apt update && sudo apt install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# Bootstrap management cluster
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --kubernetes-version=v1.32.13
 mkdir -p $HOME/.kube
 sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chmod 644 $HOME/.kube/config
-
-# Remove control-plane taint (single node management cluster)
 kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule-
 
 # Install Calico CNI
@@ -55,28 +52,18 @@ clusterctl init --infrastructure openstack:v0.10.4
 ## Step 3 - Provision Workload Cluster
 
 ```bash
-# Generate cluster manifest using existing network
 kubectl apply -f manifests/cluster.yaml
 ```
 
-## Step 4 - Install CNI on Workload Cluster
+## Step 4 - Verify Workload Cluster
 
 ```bash
 clusterctl get kubeconfig kaas-workload > ~/kaas-workload.kubeconfig
-kubectl --kubeconfig ~/kaas-workload.kubeconfig apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+kubectl --kubeconfig ~/kaas-workload.kubeconfig get nodes
 ```
 
-## Important Notes
+## Step 5 - Install CNI on Workload Cluster
 
-### Network Configuration
-- All VMs must be on the same OpenStack network for CAPI to reach workload cluster API server
-- Workers need floating IPs to pull container images (OVN-based OpenStack requires floating IP for outbound internet)
-- Use iptables DNAT on workers to redirect floating IP to internal IP for kubeadm join
-
-### Hairpin NAT Issue
-On OVN-based OpenStack, VMs cannot reach other floating IPs from within the same OpenStack.
-Workaround: use internal IPs for all intra-cluster communication.
-
-## Troubleshooting
-
-See docs/troubleshooting.md
+```bash
+kubectl --kubeconfig ~/kaas-workload.kubeconfig apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+```
