@@ -18,6 +18,8 @@
 | CAPO | v0.10.4 | OpenStack infrastructure provider |
 | kubeadm | v1.32.13 | Management cluster bootstrap |
 | Calico | v3.28 | Pod networking (CNI) |
+| Prometheus + Grafana | v0.78 | Monitoring stack |
+| ArgoCD | stable | GitOps continuous delivery |
 | Helm | v3.21 | Application deployment |
 | clusterctl | v1.7.4 | Cluster API CLI |
 | kubectl | v1.36.2 | Kubernetes CLI |
@@ -35,9 +37,16 @@ kaas-workload-md-0-9j6hc-lzpnz      Ready    worker          v1.32.12
 
 ## Screenshots
 
-![Tools installed](screenshots/02-all-tools-installed.png)
-![CAPI controllers running](screenshots/09-capi-controllers-real-vm.png)
-![Workload cluster ready](screenshots/11-workload-cluster-ready.png)
+| Step | Screenshot |
+|---|---|
+| Tools installed | ![](screenshots/02-all-tools-installed.png) |
+| CAPI controllers running | ![](screenshots/09-capi-controllers-real-vm.png) |
+| Workload cluster provisioned | ![](screenshots/10-workload-cluster-provisioned.png) |
+| Workload cluster ready | ![](screenshots/11-workload-cluster-ready.png) |
+| Prometheus + Grafana | ![](screenshots/12-prometheus-grafana-running.png) |
+| Grafana dashboard | ![](screenshots/13-grafana-dashboard.png) |
+| ArgoCD running | ![](screenshots/14-argocd-running.png) |
+| ArgoCD UI | ![](screenshots/14-argocd-ui.png) |
 
 ## Deployment
 
@@ -48,9 +57,3 @@ See [docs/deployment.md](docs/deployment.md) for the full step-by-step guide.
 **Zekkour Abderraouf** — Final year Networks, Systems & Telecommunications — ENSTICP Algiers
 - GitHub: [@Abderraoufzekkour](https://github.com/Abderraoufzekkour)
 - LinkedIn: [zekkour-abderraouf](https://www.linkedin.com/in/zekkour-abderraouf)
-
-## Monitoring
-
-Prometheus + Grafana deployed via Helm on the workload cluster.
-
-![Grafana Dashboard](screenshots/13-grafana-dashboard.png)
