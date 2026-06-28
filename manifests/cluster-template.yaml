@@ -1,21 +1,192 @@
-# Workload Cluster Template
-# Replace all <PLACEHOLDER> values with your environment values
-# Generate the actual manifest with:
-# clusterctl generate cluster kaas-workload \
-#   --infrastructure openstack \
-#   --kubernetes-version v1.29.0 \
-#   --control-plane-machine-count 1 \
-#   --worker-machine-count 2 \
-#   > manifests/cluster.yaml
+# Cluster API + CAPO manifest for provisioning a Kubernetes workload cluster on OpenStack
+# Replace all <PLACEHOLDER> values with your own before applying
+#
+# Apply with: kubectl apply -f manifests/cluster-template.yaml
+# Monitor with: kubectl get cluster kaas-workload
+# Get kubeconfig: clusterctl get kubeconfig kaas-workload > kaas-workload.kubeconfig
 
-# Required environment variables:
-# export OPENSTACK_CLOUD=openstack
-# export OPENSTACK_CLOUD_YAML_B64=$(base64 -w0 ~/.config/openstack/clouds.yaml)
-# export OPENSTACK_CLOUD_CACERT_B64=""
-# export OPENSTACK_IMAGE_NAME=<your-ubuntu-image>
-# export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR=<flavor>
-# export OPENSTACK_NODE_MACHINE_FLAVOR=<flavor>
-# export OPENSTACK_EXTERNAL_NETWORK_ID=<external-network-id>
-# export OPENSTACK_DNS_NAMESERVERS=8.8.8.8
-# export OPENSTACK_FAILURE_DOMAIN=nova
-# export OPENSTACK_SSH_KEY_NAME=<your-key-pair-name>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kaas-workload-cloud-config
+  namespace: default
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+stringData:
+  clouds.yaml: |
+    clouds:
+      openstack:
+        auth:
+          auth_url: <OPENSTACK_AUTH_URL>
+          username: "<OPENSTACK_USERNAME>"
+          password: "<OPENSTACK_PASSWORD>"
+          project_id: <OPENSTACK_PROJECT_ID>
+          project_name: "<OPENSTACK_PROJECT_NAME>"
+          user_domain_name: "Default"
+        region_name: "RegionOne"
+        interface: "public"
+        identity_api_version: 3
+  cacert: ""
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackCluster
+metadata:
+  name: kaas-workload
+  namespace: default
+spec:
+  identityRef:
+    cloudName: openstack
+    name: kaas-workload-cloud-config
+  apiServerLoadBalancer:
+    enabled: false
+  externalNetwork:
+    id: <EXTERNAL_NETWORK_ID>
+  network:
+    id: <NETWORK_ID>
+  subnets:
+    - id: <SUBNET_ID>
+  managedSecurityGroups:
+    allNodesSecurityGroupRules:
+    - description: BGP (Calico)
+      direction: ingress
+      etherType: IPv4
+      name: BGP (Calico)
+      portRangeMax: 179
+      portRangeMin: 179
+      protocol: tcp
+      remoteManagedGroups:
+      - controlplane
+      - worker
+    - description: IP-in-IP (Calico)
+      direction: ingress
+      etherType: IPv4
+      name: IP-in-IP (Calico)
+      protocol: "4"
+      remoteManagedGroups:
+      - controlplane
+      - worker
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: kaas-workload
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 192.168.0.0/16
+    serviceDomain: cluster.local
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: KubeadmControlPlane
+    name: kaas-workload-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: OpenStackCluster
+    name: kaas-workload
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlane
+metadata:
+  name: kaas-workload-control-plane
+  namespace: default
+spec:
+  replicas: 1
+  version: v1.32.12
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: OpenStackMachineTemplate
+      name: kaas-workload-control-plane
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          cloud-provider: external
+          provider-id: openstack:///'{{ instance_id }}'
+        name: '{{ local_hostname }}'
+    joinConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          cloud-provider: external
+          provider-id: openstack:///'{{ instance_id }}'
+        name: '{{ local_hostname }}'
+    clusterConfiguration:
+      apiServer:
+        extraArgs:
+          cloud-provider: external
+      controllerManager:
+        extraArgs:
+          cloud-provider: external
+    files: []
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: kaas-workload-control-plane
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: <CONTROL_PLANE_FLAVOR>
+      image:
+        filter:
+          name: <KUBERNETES_IMAGE_NAME>
+      sshKeyName: <SSH_KEY_NAME>
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: kaas-workload-md-0
+  namespace: default
+spec:
+  clusterName: kaas-workload
+  replicas: 2
+  selector:
+    matchLabels: null
+  template:
+    spec:
+      clusterName: kaas-workload
+      version: v1.32.12
+      failureDomain: nova
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: kaas-workload-md-0
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: kaas-workload-md-0
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: kaas-workload-md-0
+  namespace: default
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: external
+            provider-id: openstack:///'{{ instance_id }}'
+          name: '{{ local_hostname }}'
+      files: []
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: kaas-workload-md-0
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: <WORKER_FLAVOR>
+      image:
+        filter:
+          name: <KUBERNETES_IMAGE_NAME>
+      sshKeyName: <SSH_KEY_NAME>
