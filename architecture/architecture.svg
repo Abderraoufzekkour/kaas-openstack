@@ -63,5 +63,5 @@
 <text class="ts" x="510" y="454" text-anchor="middle">github.com/Abderraoufzekkour</text>
 <path d="M510 260 L510 290 L160 290 L160 299" fill="none" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
 <path d="M510 260 L510 298" fill="none" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
-<text class="ts" x="340" y="510" text-anchor="middle">test-network-02 — 10.10.10.0/24</text>
+<text class="ts" x="340" y="510" text-anchor="middle">test-network-02 - 10.10.10.0/24</text>
 </svg>
